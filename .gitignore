@@ -1,0 +1,12 @@
+
+.idea/
+*.iml
+
+data/*
+target/*
+*/demo*
+demo*
+*/*/demo*
+
+.DS_Store
+code/demo.py
