@@ -17,7 +17,7 @@ import numpy
 
 import theano
 import theano.tensor as T
-from theano.tensor.signal import downsample
+from theano.tensor.signal.pool import pool_2d
 from theano.tensor.nnet import conv
 
 from logistic_sgd import LogisticRegression
@@ -78,7 +78,7 @@ class LeNetConvPoolLayer(object):
                 filter_shape=filter_shape, image_shape=image_shape)
 
         # downsample each feature map individually, using maxpooling
-        pooled_out = downsample.max_pool_2d(input=conv_out,
+        pooled_out = pool_2d(input=conv_out,
                                             ds=poolsize, ignore_border=True)
 
         # add the bias term. Since the bias is a vector (1D array), we first
@@ -193,6 +193,9 @@ def evaluate_transfer_lenet5(learning_rate=0.1, alpha = 1, n_epochs=20,
     marginal_params = layer1.params + layer0.params
     
     # calculate marginal MMD and its gradients
+    # todo:
+    #  q1:最外层为什么是mean而不是2范数,
+    #  q2:论文给人的感觉是l-1层是layer2， 代码中却是layer1
     marginal_MMD = T.mean(T.mean(layer2_input[T.arange(batch_size/2)]) - T.mean(layer2_input[T.arange(batch_size/2,batch_size,1)]))
     marginal_grads = T.grad(T.dot(marginal_MMD,marginal_MMD), marginal_params)
     
@@ -232,6 +235,7 @@ def evaluate_transfer_lenet5(learning_rate=0.1, alpha = 1, n_epochs=20,
     # create the updates list by automatically looping over all
     # (params[i],grads[i]) pairs.
 
+    # todo: 为何损失函数将marginal_MMD和cost分开，梯度同时也是分开更新
     marginal_updates = []
     for param_i, marginal_grad_i in zip(marginal_params, marginal_grads):
         marginal_updates.append((param_i, param_i - 100*learning_rate * marginal_grad_i))
@@ -245,6 +249,7 @@ def evaluate_transfer_lenet5(learning_rate=0.1, alpha = 1, n_epochs=20,
             x: train_set_x[index * batch_size: (index + 1) * batch_size],
             y: train_set_y[index * batch_size: (index + 1) * batch_size]})
 
+    # todo: 用最新的预测结果替换目标域标签代码在哪里？
     transfer_model = theano.function([index], [cost, conditional_cost], updates=updates,
           givens={x: transfer_training_set_x[index * batch_size: (index + 1) * batch_size],
                   y: transfer_training_set_y[index * batch_size: (index + 1) * batch_size]})
